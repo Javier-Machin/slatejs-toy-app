@@ -24,19 +24,30 @@ const initialValue = Value.fromJSON({
   },
 });
 
-// Define our app...
 const App = () => {
-  // Set the initial value when the app is first constructed.
   const [value, setValue] = useState(initialValue)
 
-  // On change, update the app's React state with the new editor value.
-  const onChange = ({ value }) => {
+  const HandleOnChange = ({ value }) => {
     setValue(value);
   }
 
-  // Render the editor.
+  const HandleOnKeyDown = (event, editor, next) => {
+    // Return with no changes if the keypress is not '&'
+    if (event.key !== '&') return next()
+
+    // Prevent the ampersand character from being inserted.
+    event.preventDefault()
+
+    // Change the value by inserting 'and' at the cursor's position.
+    editor.insertText('and')
+  }
+
   return ( 
-    <Editor value={value} onChange={onChange} />
+    <Editor 
+      value={value} 
+      onChange={HandleOnChange} 
+      onKeyDown={HandleOnKeyDown} 
+    />
   );
 }
 
