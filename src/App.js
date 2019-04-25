@@ -2,8 +2,8 @@
 import React, { useState } from 'react';
 import { Editor } from 'slate-react';
 import { Value } from 'slate';
-import CodeNode from './components/CodeNode';
-import { set } from 'immutable';
+import CodeNode from './components/renderers/CodeNode';
+import BoldMark from './components/renderers/BoldMark';
 
 const initialValue = Value.fromJSON({
   document: {
@@ -36,6 +36,16 @@ const renderNode = (props, editor, next) => {
   }
 };
 
+// Add a `renderMark` method to render marks.
+const renderMark = (props, editor, next) => {
+  switch (props.mark.type) {
+    case 'bold':
+      return <BoldMark {...props} />;
+    default:
+      return next();
+  }
+};
+
 const App = () => {
   const [value, setValue] = useState(initialValue);
 
@@ -56,17 +66,28 @@ const App = () => {
   // };
 
   const handleOnKeyDown = (event, editor, next) => {
-    // Return with no changes if it's not the "`" key with ctrl pressed.
-    if (event.key !== "'" || !event.ctrlKey) return next();
+    if (!event.ctrlKey) return next();
 
-    // Prevent the "`" from being inserted by default.
-    event.preventDefault();
-
-    // Determine whether any of the currently selected blocks are code blocks.
-    const isCode = editor.value.blocks.some(block => block.type === 'code');
-
-    // Toggle the block type depending on `isCode`.
-    editor.setBlocks(isCode ? 'paragraph' : 'code');
+    // Decide what to do based on the key code...
+    switch (event.key) {
+      // When "B" is pressed, add a "bold" mark to the text.
+      case 'b': {
+        event.preventDefault();
+        editor.toggleMark('bold');
+        break;
+      }
+      // When "`" is pressed, keep our existing code block logic.
+      case "'": {
+        const isCode = editor.value.blocks.some(block => block.type === 'code');
+        event.preventDefault();
+        editor.setBlocks(isCode ? 'paragraph' : 'code');
+        break;
+      }
+      // Otherwise, let other plugins handle it.
+      default: {
+        return next();
+      }
+    }
   };
 
   return (
@@ -76,6 +97,7 @@ const App = () => {
         onChange={handleOnChange}
         onKeyDown={handleOnKeyDown}
         renderNode={renderNode}
+        renderMark={renderMark}
       />
     </>
   );
