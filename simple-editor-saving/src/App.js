@@ -29,15 +29,19 @@ const initialValue = Value.fromJSON(
 );
 
 const App = () => {
-  const [value, setValue] = useState(initialValue);
+  const [mainValue, setMainValue] = useState(initialValue);
 
   const handleOnChange = ({ value }) => {
-    const content = JSON.stringify(value.toJSON());
-    localStorage.setItem('content', content);
-    setValue(value);
+    // Check to see if the document has changed before saving.
+    if (value.document !== mainValue.document) {
+      const content = JSON.stringify(value.toJSON());
+      localStorage.setItem('content', content);
+    }
+
+    setMainValue(value);
   };
 
-  return <Editor value={value} onChange={handleOnChange} />;
+  return <Editor value={mainValue} onChange={handleOnChange} />;
 };
 
 export default App;
