@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { Editor } from 'slate-react';
 import { Value } from 'slate';
 import CodeNode from './components/renderers/CodeNode';
-import BoldMark from './components/renderers/BoldMark';
 
 const initialValue = Value.fromJSON({
   document: {
@@ -40,11 +39,47 @@ const renderNode = (props, editor, next) => {
 const renderMark = (props, editor, next) => {
   switch (props.mark.type) {
     case 'bold':
-      return <BoldMark {...props} />;
+      return <strong>{props.children}</strong>;
+    case 'code':
+      return <code>{props.children}</code>;
+    case 'italic':
+      return <em>{props.children}</em>;
+    case 'strikethrough':
+      return <del>{props.children}</del>;
+    case 'underline':
+      return <u>{props.children}</u>;
     default:
       return next();
   }
 };
+
+// maps keys with mark types
+const MarkHotkey = options => {
+  const { type, key } = options;
+
+  // Return our "plugin" object, containing the `onKeyDown` handler.
+  return {
+    onKeyDown(event, editor, next) {
+      // If it doesn't match our `key`, let other plugins handle it.
+      if (!event.ctrlKey || event.key !== key) return next();
+
+      // Prevent the default characters from being inserted.
+      event.preventDefault();
+
+      // Toggle the mark `type`.
+      editor.toggleMark(type);
+    }
+  };
+};
+
+// Initialize a plugin for each mark...
+const plugins = [
+  MarkHotkey({ key: 'b', type: 'bold' }),
+  MarkHotkey({ key: "'", type: 'code' }),
+  MarkHotkey({ key: 'i', type: 'italic' }),
+  MarkHotkey({ key: 'º', type: 'strikethrough' }),
+  MarkHotkey({ key: 'u', type: 'underline' })
+];
 
 const App = () => {
   const [value, setValue] = useState(initialValue);
@@ -65,37 +100,12 @@ const App = () => {
   // 	editor.insertText('and');
   // };
 
-  const handleOnKeyDown = (event, editor, next) => {
-    if (!event.ctrlKey) return next();
-
-    // Decide what to do based on the key code...
-    switch (event.key) {
-      // When "B" is pressed, add a "bold" mark to the text.
-      case 'b': {
-        event.preventDefault();
-        editor.toggleMark('bold');
-        break;
-      }
-      // When "`" is pressed, keep our existing code block logic.
-      case "'": {
-        const isCode = editor.value.blocks.some(block => block.type === 'code');
-        event.preventDefault();
-        editor.setBlocks(isCode ? 'paragraph' : 'code');
-        break;
-      }
-      // Otherwise, let other plugins handle it.
-      default: {
-        return next();
-      }
-    }
-  };
-
   return (
     <>
       <Editor
+        plugins={plugins}
         value={value}
         onChange={handleOnChange}
-        onKeyDown={handleOnKeyDown}
         renderNode={renderNode}
         renderMark={renderMark}
       />
