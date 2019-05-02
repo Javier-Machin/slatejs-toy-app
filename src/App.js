@@ -1,35 +1,42 @@
+/* eslint-disable no-case-declarations */
 /* eslint-disable no-unused-vars */
 import React, { useState } from 'react';
 import { Editor } from 'slate-react';
 import { Value } from 'slate';
 import CodeNode from './components/renderers/CodeNode';
+import Reveal from './components/marks/RevealMark';
 
-const initialValue = Value.fromJSON({
-  document: {
-    nodes: [
-      {
-        object: 'block',
-        type: 'paragraph',
-        nodes: [
-          {
-            object: 'text',
-            leaves: [
-              {
-                text: 'A line of text in a paragraph.'
-              }
-            ]
-          }
-        ]
-      }
-    ]
+const existingValue = JSON.parse(localStorage.getItem('content'));
+
+const initialValue = Value.fromJSON(
+  existingValue || {
+    document: {
+      nodes: [
+        {
+          object: 'block',
+          type: 'paragraph',
+          nodes: [
+            {
+              object: 'text',
+              leaves: [
+                {
+                  text: 'A line of text in a paragraph.'
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
   }
-});
+);
 
-// Add a `renderNode` method to render a `CodeNode` for code blocks.
 const renderNode = (props, editor, next) => {
   switch (props.node.type) {
     case 'code':
       return <CodeNode {...props} />;
+    case 'revealGroup':
+      return <Reveal {...props} />;
     default:
       return next();
   }
@@ -42,6 +49,8 @@ const renderMark = (props, editor, next) => {
       return <strong>{props.children}</strong>;
     case 'code':
       return <code>{props.children}</code>;
+    case 'reveal':
+      return <Reveal>{props.children}</Reveal>;
     case 'italic':
       return <em>{props.children}</em>;
     case 'strikethrough':
@@ -72,21 +81,50 @@ const MarkHotkey = options => {
   };
 };
 
+const MakeRevealGroup = options => {
+  const { key } = options;
+  return {
+    onKeyDown(event, editor, next) {
+      if (!event.ctrlKey || event.key !== key) return next();
+      event.preventDefault();
+      // const buttonText = prompt('button?');
+      editor.value.fragment.nodes.size > 1
+        ? editor.wrapBlock('revealGroup')
+        : editor.unwrapBlock('revealGroup');
+    }
+  };
+};
+
 // Initialize a plugin for each mark...
 const plugins = [
   MarkHotkey({ key: 'b', type: 'bold' }),
   MarkHotkey({ key: "'", type: 'code' }),
-  MarkHotkey({ key: 'i', type: 'italic' }),
   MarkHotkey({ key: 'º', type: 'strikethrough' }),
-  MarkHotkey({ key: 'u', type: 'underline' })
+  MarkHotkey({ key: 'i', type: 'italic' }),
+  MarkHotkey({ key: 'u', type: 'underline' }),
+  MarkHotkey({ key: 'r', type: 'reveal' }),
+  MakeRevealGroup({ key: 'h' })
 ];
 
 const App = () => {
-  const [value, setValue] = useState(initialValue);
+  const [mainValue, setMainValue] = useState(initialValue);
 
   const handleOnChange = ({ value }) => {
-    setValue(value);
+    // Check to see if the document has changed before saving.
+    if (value.document !== mainValue.document) {
+      const content = JSON.stringify(value.toJSON());
+      localStorage.setItem('content', content);
+    }
+    setMainValue(value);
   };
+
+  // if (mainValue.fragment.nodes._tail) {
+  //   mainValue.fragment.nodes._tail.array.some(block => {
+  //     if (block) {
+  //       console.log(block.type);
+  //     }
+  //   });
+  // }
 
   // // replaces '&' with 'and'
   // const HandleOnKeyDown = (event, editor, next) => {
@@ -104,7 +142,7 @@ const App = () => {
     <>
       <Editor
         plugins={plugins}
-        value={value}
+        value={mainValue}
         onChange={handleOnChange}
         renderNode={renderNode}
         renderMark={renderMark}
